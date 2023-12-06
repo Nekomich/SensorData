@@ -1,0 +1,1 @@
+(echo: && echo network: && echo   proxy: http://proxy.itm.bfw:3128) >> C:\Users\Administrator\.arduinoIDE\arduino-cli.yaml

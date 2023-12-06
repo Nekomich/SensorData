@@ -1,0 +1,39 @@
+############################################################
+# Arduino unter Windows
+
+WIN+r > cmd
+
+(echo: && echo network: && echo   proxy: http://proxy.itm.bfw:3128) >> C:\Users\Administrator\.arduinoIDE\arduino-cli.yaml
+
+oder
+
+proxy_arduino.bat aus dem Reporistory
+
+############################################################
+# Ubuntu
+
+sudo nano /etc/environment
+
+http_proxy=http://192.168.10.221:3128/
+https_proxy=http://192.168.10.221:3128/
+ftp_proxy=http://192.168.10.221:3128/
+no_proxy="localhost,127.0.0.1,localaddress,.localdomain.com"
+HTTP_PROXY=http://192.168.10.221:3128/
+HTTPS_PROXY=http://192.168.10.221:3128/
+FTP_PROXY=http://192.168.10.221:3128/
+NO_PROXY="localhost,127.0.0.1,localaddress,.localdomain.com"
+
+############################################################
+# APT
+
+sudo nano /etc/apt/apt.conf.d/S95proxies
+
+Acquire::http::proxy "http://192.168.10.221:3128/";
+Acquire::https::proxy "http://192.168.10.221:3128/";
+Acquire::ftp::proxy "http://192.168.10.221:3128/";
+
+############################################################
+# NPM
+
+npm config set proxy http://192.168.10.221:3128
+npm config set https-proxy http://192.168.10.221:3128
