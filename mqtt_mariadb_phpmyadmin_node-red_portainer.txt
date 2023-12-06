@@ -1,0 +1,344 @@
+	Anleitung mqtt5/mariadb/node-red/portainer in/mittels Docker
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+1. Docker installieren
+https://docs.docker.com/engine/install/ubuntu/
+- Ich habe es bei der inoffiziellen Version, die von Ubuntu ausgeliefert wird, belassen.
+
+sudo apt-get update -y && sudo apt-get upgrade -y
+sudo apt-get install docker.io docker-compose docker-compose-v2
+
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+2. Um Docker in non-root Modus laufen zu lassen:
+https://docs.docker.com/engine/install/linux-postinstall/
+
+- Docker Gruppe erstellen
+sudo groupadd docker
+
+- Benutzer zur Gruppe Docker hinzufügen
+sudo usermod -aG docker $USER
+
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+3. Ordner für Container, Definitionsdateien und Runtime-Daten erstellen
+
+cd ~
+mkdir docker/mqtt5 -p
+mkdir docker/mariadb -p
+mkdir docker/node-red -p
+mkdir docker/portainer -p
+
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+4. mqtt5 installieren
+
+cd ~/docker/mqtt5
+nano docker-compose.yml
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+################################################################################
+# MQTT5 Stack or Compose
+################################################################################
+# docker compose -f docker-compose.yml up -d
+################################################################################
+
+services:
+
+  mqtt5:
+    image: eclipse-mosquitto
+    restart: always
+    container_name: mqtt5
+    ports:
+      - "1883:1883" #default mqtt port
+      - "9001:9001" #default mqtt port for websockets
+    volumes:
+      - ./config:/mosquitto/config:rw
+      - ./data:/mosquitto/data:rw
+      - ./log:/mosquitto/log:rw
+    networks:
+      - mqtt5-network
+
+# volumes for mapping data,config and log
+volumes:
+  config:
+  data:
+  log:
+
+networks:
+    mqtt5-network:
+	    driver: bridge
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+- Container erzeugen und in den Hintergrund starten
+docker compose -f docker-compose.yml up -d
+
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+5. mariadb + phpMyAdmin installieren
+- Es werden dabei zwei Container erzeugt. Einer für MariaDB, der die Daten nach
+	außen schreibt mittels Volume. phpMyAdmin ist ein reiner Runtime-
+	Container der keinerlei Daten schreibt. Aufpassen, das die Passwörter
+	für MYSQL_ROOT in beiden übereinstimmen, sonst hat phpMyAdmin keine
+	Zugriff auf die Datenbank!
+
+cd ~/docker/mariadb
+nano docker-compose.yml
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+################################################################################
+# MariaDB + phpMyAdmin Stack or Compose
+################################################################################
+# docker compose -f docker-compose.yml up -d
+################################################################################
+
+services:
+
+  mariadb:
+    image: mariadb:latest
+    restart: always
+    container_name: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: Hqb!6cTm83cCkNPLZkQVsScyJMnbWqA
+      MYSQL_DATABASE: sensordata
+      MYSQL_USER: user
+      MYSQL_PASSWORD: user
+    volumes:
+      - ./data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - db-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    restart: always
+    container_name: phpmyadmin
+    links:
+      - mariadb
+    environment:
+      PMA_HOST: mariadb
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      MYSQL_ROOT_PASSWORD: Hqb!6cTm83cCkNPLZkQVsScyJMnbWqA
+    ports:
+      - '8080:80'
+    networks:
+      - db-network
+
+volumes:
+  data:
+
+networks:
+  db-network:
+    driver: bridge
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+- Container erzeugen und in den Hintergrund starten
+docker-compose -f docker-compose.yml up -d
+
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+6. Node-Red installieren (Multi-Instance)
+- Achtung:
+	1. Die Ports der Instanzen weichen von dem Standard-Port 1880 ab.
+	Um keine Konflickte mit MQTT zu erzeugen, habe ich die Ports
+	1891 bis 1899 gewählt. Sollen weitere Instanzen erstellt werden, sollte
+	darauf geachtet werden, das die Ports nicht überlappen.
+	
+	2. Die Node-Red Instanzen werden nicht automatisch gestartet. Dafür habe
+	ich Portainer (Web-GUI) vorgesehen. Sollen die Instanzen automatisch
+	gestartet werden, muss folgender Eintrag bei jedem Service ergänzt werden
+	    restart: always
+
+
+cd ~/docker/node-red
+nano docker-compose.yml
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+################################################################################
+# Node-Red Stack or Compose
+################################################################################
+# docker compose -f docker-compose.yml up -d
+################################################################################
+
+services:
+
+  node-red-1:
+    image: nodered/node-red:latest
+    container_name: node-red-1
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1891:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-1:/data:rw
+
+  node-red-2:
+    image: nodered/node-red:latest
+    container_name: node-red-2
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1892:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-2:/data:rw
+
+  node-red-3:
+    image: nodered/node-red:latest
+    container_name: node-red-3
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1893:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-3:/data:rw
+
+  node-red-4:
+    image: nodered/node-red:latest
+    container_name: node-red-4
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1894:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-4:/data:rw
+
+  node-red-5:
+    image: nodered/node-red:latest
+    container_name: node-red-5
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1895:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-5:/data:rw
+
+  node-red-6:
+    image: nodered/node-red:latest
+    container_name: node-red-6
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1896:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-6:/data:rw
+
+  node-red-7:
+    image: nodered/node-red:latest
+    container_name: node-red-7
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1897:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-7:/data:rw
+
+  node-red-8:
+    image: nodered/node-red:latest
+    container_name: node-red-8
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1898:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-8:/data:rw
+
+  node-red-9:
+    image: nodered/node-red:latest
+    container_name: node-red-9
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - "1899:1880"
+    networks:
+      - node-red-net
+    volumes:
+      - ./data-instance-9:/data:rw
+
+volumes:
+  data-instance-1:
+  data-instance-2:
+  data-instance-3:
+  data-instance-4:
+  data-instance-5:
+  data-instance-6:
+  data-instance-7:
+  data-instance-8:
+  data-instance-9:
+
+networks:
+  node-red-net:
+    driver: bridge
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+- Container erzeugen und in den Hintergrund starten
+docker compose -f docker-compose.yml up -d
+
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+7. (optional) Portainer - Docker Container per Web-GUI verwalten
+https://docs.portainer.io/start/install/server/docker/linux
+https://earthly.dev/blog/portainer-for-docker-container-management/
+
+cd ~/docker/portainer
+nano docker-compose.yml
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+################################################################################
+# Portainer Stack or Compose
+################################################################################
+# docker compose -f docker-compose.yml up -d
+################################################################################
+
+services:
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    restart: always
+    container_name: portainer 
+    environment:
+      - TZ=Europe/Berlin
+    ports:
+      - 9443:9443
+      volumes:
+        - data:/data
+        - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  data:
+
+<<<<<<<<<<<<<<<<<<<<<<<< Inhalt docker-compose.yml >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+- Container erzeugen und in den Hintergrund starten
+docker compose -f docker-compose.yml up -d
